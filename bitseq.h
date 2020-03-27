@@ -5,19 +5,28 @@
 #include <string.h>
 #include <stdint.h>
 
-// 2bit representation of DNA letters
-// A:00 C:01 G:10 T:11
-// U:11 for same representation by DNA / RNA
-// N:00 masked as A
-// complementary sequence is achived by '~' operator
+/* 2bit representation of DNA letters
+ * A :  65 : 1000 |00| 1
+ * a :  97 : 1100 |00| 1
+ * C :  67 : 1000 |01| 1
+ * c :  99 : 1100 |01| 1
+ * G :  71 : 1000 |11| 1
+ * g : 103 : 1100 |11| 1
+ * T :  84 : 1010 |10| 0
+ * t : 116 : 1110 |10| 0
+ * U :  85 : 1010 |10| 1
+ * u : 117 : 1110 |10| 1
+ * N :  78 : 1001 |11| 0
+ * n : 110 : 1101 |11| 0
+ * DNA/RNA conversion between T and U is compatible
+ * N is masked as G
+ * complementary sequence
+*/
 
-static const uint8_t A_BASE_VAL = 0;
-static const uint8_t C_BASE_VAL = 1;
-static const uint8_t G_BASE_VAL = 2;
-static const uint8_t T_BASE_VAL = 3;
-static const uint8_t N_BASE_VAL = 0;
-static const uint8_t BLOCK_MASK = 8;
-static const uint8_t BLOCK_SIZE = 2;
+static const uint8_t TWO_BIT_MASK = 3;
+static const uint8_t BITS_PER_BYTE = 8;
+static const uint8_t BITS_PER_BLOCK = 2;
+
 
 typedef struct _bitseq {
     size_t size_unpacked;
@@ -28,7 +37,9 @@ typedef struct _bitseq {
 bitseq_t *bs_init(size_t);
 void bs_destroy(bitseq_t *);
 size_t bs_sizepacked(size_t);
-uint8_t bs_twobit(const char);
 bitseq_t *bs_pack(const char *);
+uint8_t bs_dnatwobit(const char);
+void bs_set(bitseq_t *, size_t, int);
+int bs_exist(bitseq_t *, size_t);
 
 #endif // BITSEQ_H

@@ -33,25 +33,8 @@ size_t bs_sizepacked(size_t size_unpacked) {
 }
 
 
-uint8_t bs_twobit(const char base) {
-    uint8_t twobit;
-    switch (base) {
-    case 'C':
-    case 'c':
-        twobit = C_BASE_VAL;
-        break;
-    case 'G':
-    case 'g':
-        twobit = G_BASE_VAL;
-        break;
-    case 'T':
-    case 't':
-        twobit = T_BASE_VAL;
-        break;
-    default:
-        twobit = A_BASE_VAL;
-    }
-    return twobit;
+uint8_t bs_dnatwobit(const char base) {
+    return (base >> 1) & TWO_BIT_MASK;
 }
 
 
@@ -59,18 +42,31 @@ bitseq_t *bs_pack(const char *seq) {
     size_t size_unpack = strlen(seq);
     bitseq_t *bs = bs_init(size_unpack);
 
-    uint8_t mask = BLOCK_MASK;
+    uint8_t mask = BITS_PER_BYTE;
     size_t idx_block = 0;
     for (size_t idx_base = 0; idx_base < size_unpack; idx_base++) {
-        uint8_t block_val = bs_twobit(seq[idx_base]);
-        mask -= BLOCK_SIZE;
+        uint8_t block_val = bs_dnatwobit(seq[idx_base]);
+        mask -= BITS_PER_BLOCK;
         bs->bitseq[idx_block] |= (block_val << mask);
 
         if (mask == 0) {
-            mask = BLOCK_MASK;
+            mask = BITS_PER_BYTE;
             idx_block++;
         }
     }
 
     return bs;
 }
+
+
+void bs_set(bitseq_t *bs, size_t idx_bit, int flag) {
+
+}
+
+
+int bs_exist(bitseq_t *bs, size_t idx_bit) {
+    int flag = 0;
+
+    return flag;
+}
+
