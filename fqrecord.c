@@ -29,6 +29,16 @@ int fq_read(fq_t *record, htsFile *fh) {
 }
 
 
+double fq_score(fq_t *record) {
+    double score = 0.0;
+
+    for (size_t b = 0; b < record->qual.l; b++) {
+        score += (double)(record->qual.s[b]) - 33.0;
+    }
+    return (score / record->qual.l);
+}
+
+
 void fq_print(fq_t *record) {
     printf("%s\n", record->hed.s);
     printf("%s\n", record->seq.s);

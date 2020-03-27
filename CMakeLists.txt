@@ -7,8 +7,11 @@ endif()
 
 project(fastqcleaner LANGUAGES C)
 
-add_executable(fastqcleaner main.c auxilary.c auxilary.h htsutils.c htsutils.h fqrecord.c fqrecord.h)
-
+add_executable(fastqcleaner main.c
+               auxilary.c auxilary.h
+               htsutils.c htsutils.h
+               fqrecord.c fqrecord.h
+               bitseq.c bitseq.h)
 
 find_package(PkgConfig REQUIRED)
 

@@ -6,7 +6,7 @@ static const char AUX_DEFAULT_OUTPUT[] = "cleanfq";
 static const double AUX_DEFAULT_MAPQ = 30.0;
 
 
-void aux_parse(aux_config_t *aux, int argc, const char **argv) {
+int aux_parse(aux_config_t *aux, int argc, const char **argv) {
 
     /* initialize default auxiliary values */
     aux->fh_input = NULL;
@@ -28,11 +28,11 @@ void aux_parse(aux_config_t *aux, int argc, const char **argv) {
         // check each parameter and its value
         if((PARAMETER_CHECK("-h", 2, parameterLength)) ||
            (PARAMETER_CHECK("--help", 6, parameterLength))) {
-            help();
+            return help();
         }
         else if((PARAMETER_CHECK("-v", 2, parameterLength)) ||
                 (PARAMETER_CHECK("--version", 9, parameterLength))) {
-            version();
+            return version();
         }
         else if((PARAMETER_CHECK("-i", 2, parameterLength)) ||
                 (PARAMETER_CHECK("--input", 7, parameterLength))) {
@@ -56,22 +56,22 @@ void aux_parse(aux_config_t *aux, int argc, const char **argv) {
         }
         else {
             fprintf(stderr, "Error:: Unknown parameter %s\n", argv[i]);
-            help();
+            return help();
         }
 
     }
 
-    return;
+    return 0;
 }
 
 
-
-void version(void) {
+int version(void) {
     fprintf(stderr, "PASSFinder %s\n", VERSION);
-    exit(EXIT_SUCCESS);
+    return 1;
 }
 
-void help(void) {
+
+int help(void) {
 
     fprintf(stderr, "\nTool: fastqcleaner\n");
     fprintf(stderr, "Version: %s\n", VERSION);
@@ -87,7 +87,7 @@ void help(void) {
     fprintf(stderr, "\t-q/--quality\tminimum average read quality\n");
     fprintf(stderr, "\t-h/--help\tprint help message\n");
     fprintf(stderr, "\t-v/--version\tprint current version\n");
-    exit(EXIT_SUCCESS);
+    return 1;
 }
 
 

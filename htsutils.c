@@ -1,64 +1,70 @@
 #include "htsutils.h"
 
-void hts_init(hts_config_t *hts, aux_config_t *aux) {
+int htsu_open(htsu_config_t *hts, const char *file_input, const char *file_pair) {
 
-    hts->fh_input = hts_open(aux->fh_input, "r");
-    if (!hts->fh_input) {
-        fprintf(stderr, "fastqcleaner::error, could not open input FASTQ file %s\n", aux->fh_input);
-        exit(EXIT_FAILURE);
+    hts->fh_input = NULL;
+    hts->fh_pair = NULL;
+    hts->fo_input = NULL;
+    hts->fo_pair = NULL;
+
+    // open input file
+    if (!file_input) {
+        fprintf(stderr, "fastqcleaner::error, input file not provided.");
+        return 1;
     }
 
-    if (aux->fh_pair) {
-        hts->fh_pair = hts_open(aux->fh_input, "r");
+    hts->fh_input = hts_open(file_input, "r");
+    if (!hts->fh_input) {
+        fprintf(stderr, "fastqcleaner::error, could not open input FASTQ file %s\n", file_input);
+        return 1;
+    }
+
+    // open pair file if requested
+    if (file_pair) {
+        hts->fh_pair = hts_open(file_pair, "r");
         if (!hts->fh_pair) {
-            fprintf(stderr, "fastqcleaner::error, could not open paired FASTQ file %s\n", aux->fh_pair);
-            exit(EXIT_FAILURE);
+            fprintf(stderr, "fastqcleaner::error, could not open paired FASTQ file %s\n", file_pair);
+            return 1;
         }
     }
 
+    return 0;
 }
 
 
-void hts_destroy(hts_config_t *hts) {
+void htsu_destroy(htsu_config_t *hts) {
     if (hts->fh_input)
         hts_close(hts->fh_input);
 
     if (hts->fh_pair)
         hts_close(hts->fh_pair);
+
+    if (hts->fo_input)
+        hts_close(hts->fo_input);
+
+    if (hts->fo_pair)
+        hts_close(hts->fo_pair);
 }
 
 
-void hts_parse(hts_config_t *hts, aux_config_t *aux) {
+void htsu_parse(htsu_config_t *hts, double score_qual) {
 
-    int ret,n = 0;
+    size_t record_id = 0;
     fq_t record;
 
     fq_init(&record);
     while(fq_read(&record, hts->fh_input) == 4) {
-        //printf("%ld-%ld-%ld-%ld\n", record.hed.l, record.seq.l, record.opt.l, record.qual.l);
-        n++;
 
+        if (fq_score(&record) < score_qual)
+            continue;
+
+        // encode sequence to two bit
+        bitseq_t *bs = bs_pack(record.seq.s);
+        bs_destroy(bs);
+        record_id++;
     }
+
     fq_print(&record);
-
-
     fq_destroy(&record);
-
-    /*
-    kstring_t line = KS_INITIALIZE;
-    int ret, line_id = 0;
-    while ((ret = hts_getline(hts->fh_input, '\n', &line)) >= 0) {
-
-        hts_getline(hts->fh_input, '\n', &line);
-        hts_getline(hts->fh_input, '\n', &line);
-        hts_getline(hts->fh_input, '\n', &line);
-        n++;
-    }
-
-    if (line.s)
-        free(line.s);
-    */
-
-    printf("lines %d\n", n);
-
+    printf("lines %ld\n", record_id);
 }
