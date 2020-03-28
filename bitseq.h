@@ -1,6 +1,7 @@
 #ifndef BITSEQ_H
 #define BITSEQ_H
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -23,9 +24,10 @@
  * complementary sequence
 */
 
-static const uint8_t TWO_BIT_MASK = 3;
+static const uint8_t TWO_BIT_MASK = 0b11;
 static const uint8_t BITS_PER_BYTE = 8;
 static const uint8_t BITS_PER_BLOCK = 2;
+static const uint8_t MSB_MASK = 0b10000000;
 
 
 typedef struct _bitseq {
@@ -34,6 +36,13 @@ typedef struct _bitseq {
     uint8_t *bitseq;
 } bitseq_t;
 
+
+typedef struct _bitseq_iter {
+    size_t idx_byte;
+    size_t idx_bit;
+    int value;
+} bitseq_iter_t;
+
 bitseq_t *bs_init(size_t);
 void bs_destroy(bitseq_t *);
 size_t bs_sizepacked(size_t);
@@ -41,5 +50,10 @@ bitseq_t *bs_pack(const char *);
 uint8_t bs_dnatwobit(const char);
 void bs_set(bitseq_t *, size_t, int);
 int bs_exist(bitseq_t *, size_t);
+void bs_print(bitseq_t *);
+
+void bs_iter_begin(bitseq_iter_t *);
+int bs_iter_next(bitseq_iter_t *, bitseq_t *);
+int bs_iter_value(bitseq_iter_t *);
 
 #endif // BITSEQ_H

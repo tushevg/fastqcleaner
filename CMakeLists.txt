@@ -7,11 +7,9 @@ endif()
 
 project(fastqcleaner LANGUAGES C)
 
-add_executable(fastqcleaner main.c
-               auxilary.c auxilary.h
-               htsutils.c htsutils.h
-               fqrecord.c fqrecord.h
-               bitseq.c bitseq.h)
+file(GLOB SOURCES *.c)
+file(GLOB HEADERS *.h)
+add_executable(fastqcleaner ${SOURCES} ${HEADERS})
 
 find_package(PkgConfig REQUIRED)
 
@@ -22,3 +20,6 @@ target_link_libraries(${PROJECT_NAME} ${ZLIB_LIBRARIES})
 pkg_check_modules(HTSLIB REQUIRED htslib)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${HTSLIB_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${HTSLIB_LIBRARIES})
+
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+

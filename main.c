@@ -1,29 +1,18 @@
 #include <stdio.h>
 #include "auxilary.h"
 #include "htsutils.h"
+#include "tests.h"
 
-/*
-//const char *dna = "ACGTTGCAT";
-const char *dna = "CCGGCCCTTTCCGCCGGTGTCAACCGCTTGTACATCCGCCACGCGGTCCTG";
-
-bitseq_t *bs = bs_pack(dna);
-
-for(size_t i = 0; i < bs->size_packed; i++) {
-    printf("%ld - %d\n", i, bs->bitseq[i]);
-}
-
-printf("size dna %ld\n", bs->size_unpacked * sizeof(char));
-printf("size twobit %ld\n", bs->size_packed * sizeof(uint8_t));
-
-
-bs_destroy(bs);
-*/
 
 
 int main(int argc, const char *argv[])
 {
     aux_config_t aux;
     htsu_config_t hts;
+
+    if (run_tests() > 0) {
+        return 0;
+    }
 
     // parse auxiliary configuration
     if (aux_parse(&aux, argc, argv) != 0) {

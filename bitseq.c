@@ -59,14 +59,64 @@ bitseq_t *bs_pack(const char *seq) {
 }
 
 
-void bs_set(bitseq_t *bs, size_t idx_bit, int flag) {
-
+void bs_set(bitseq_t *bs, size_t index, int flag) {
+    size_t idx_byte = index / BITS_PER_BYTE;
+    size_t idx_bit = index % BITS_PER_BYTE;
 }
 
 
-int bs_exist(bitseq_t *bs, size_t idx_bit) {
-    int flag = 0;
+int bs_exist(bitseq_t *bs, size_t index) {
+    size_t idx_byte = index / BITS_PER_BYTE;
+    size_t idx_bit = index % BITS_PER_BYTE;
+    size_t mask = MSB_MASK >> idx_bit;
 
-    return flag;
+    if (idx_byte >= bs->size_packed)
+        return 0;
+
+    return (bs->bitseq[idx_byte] & mask) ? 1 : 0;
 }
 
+
+void bs_print(bitseq_t *bs) {
+    bitseq_iter_t iter;
+    bs_iter_begin(&iter);
+    while (bs_iter_next(&iter, bs) > 0) {
+        (bs_iter_value(&iter) == 1) ? printf("1") : printf("0");
+    }
+    printf("\n");
+}
+
+
+void bs_iter_begin(bitseq_iter_t *iter) {
+    iter->idx_byte = 0;
+    iter->idx_bit = 0;
+    iter->value = 0;
+}
+
+
+int bs_iter_next(bitseq_iter_t *iter, bitseq_t *bs) {
+
+    // check current bit
+    if (iter->idx_bit == BITS_PER_BYTE) {
+        iter->idx_bit = 0;
+        iter->idx_byte++; // next block
+    }
+
+    // check for last byte
+    if (iter->idx_byte >= bs->size_packed)
+        return 0;
+
+    // update mask
+    uint8_t mask = MSB_MASK >> iter->idx_bit;
+    iter->value = (bs->bitseq[iter->idx_byte] & mask) ? 1 : 0;
+
+    // increament bit
+    iter->idx_bit++;
+
+    return 1;
+}
+
+
+int bs_iter_value(bitseq_iter_t *iter) {
+    return iter->value;
+}
