@@ -24,11 +24,6 @@
  * complementary sequence
 */
 
-static const uint8_t TWO_BIT_MASK = 0b11;
-static const uint8_t BITS_PER_BYTE = 8;
-static const uint8_t BITS_PER_BLOCK = 2;
-static const uint8_t MSB_MASK = 0b10000000;
-
 
 typedef struct _bitseq {
     size_t size_unpacked;
@@ -42,6 +37,7 @@ typedef struct _bitseq_iter {
     size_t idx_bit;
     int value;
 } bitseq_iter_t;
+
 
 bitseq_t *bs_init(size_t);
 void bs_destroy(bitseq_t *);
