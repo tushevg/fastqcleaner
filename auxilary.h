@@ -5,13 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// define MIN & MAX macros
-#define MIN(a,b) (((a)<(b))?(a):(b))
-#define MAX(a,b) (((a)>(b))?(a):(b))
-
-// define our parameter checking macro
-#define PARAMETER_CHECK(param, paramLen, actualLen) (strncmp(argv[i], param, MIN(actualLen, paramLen))== 0) && (actualLen == paramLen)
-
 // define parameters
 typedef struct _aux_config_t
 {
@@ -21,11 +14,7 @@ typedef struct _aux_config_t
     double qual;
 } aux_config_t;
 
-
-int help(void);
-int version(void);
-int chomp(char *line);
-
+int aux_help(void);
 int aux_parse(aux_config_t *aux, int argc, const char **argv);
 
 #endif // AUXILARY_H
