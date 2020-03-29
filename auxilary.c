@@ -70,7 +70,7 @@ int aux_parse(aux_config_t *aux, int argc, const char **argv)
         else if(aux_param_check(argv[i], "-q") ||
                 aux_param_check(argv[i], "--quality")) {
             i += 1;
-            aux->qual = strtod(argv[i], NULL);
+            aux->qual = strtof(argv[i], NULL);
         }
         else {
             fprintf(stderr, "%s::error, unknown parameter %s\n", PROJECT_NAME, argv[i]);

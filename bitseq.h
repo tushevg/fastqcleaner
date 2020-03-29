@@ -44,7 +44,8 @@ void bs_destroy(bitseq_t *);
 size_t bs_sizepacked(size_t);
 bitseq_t *bs_pack(const char *);
 uint8_t bs_dnatwobit(const char);
-void bs_set(bitseq_t *, size_t, int);
+void bs_set(bitseq_t *, size_t);
+void bs_clear(bitseq_t *, size_t);
 int bs_exist(bitseq_t *, size_t);
 void bs_print(bitseq_t *);
 

@@ -11,7 +11,7 @@ typedef struct _aux_config_t
     const char *fh_input;
     const char *fh_pair;
     const char *fo_tag;
-    double qual;
+    float qual;
 } aux_config_t;
 
 int aux_help(void);

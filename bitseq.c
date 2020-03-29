@@ -1,9 +1,10 @@
 #include "bitseq.h"
 
-static const uint8_t BITS_PER_BYTE = 8;
-static const uint8_t BITS_PER_BLOCK = 2;
-static const uint8_t TWO_BIT_MASK = 3;
-static const uint8_t MSB_MASK = 128;
+static const uint8_t BITS_PER_BYTE = __CHAR_BIT__;
+static const uint8_t BITS_PER_BLOCK = sizeof(uint8_t) * BITS_PER_BYTE;
+static const uint8_t BITS_PER_CHAR = 2;
+static const uint8_t MASK_TWOBIT = 3;
+static const uint8_t MASK_MSB = 128;
 
 
 bitseq_t *bs_init(size_t size_unpacked)
@@ -35,13 +36,13 @@ void bs_destroy(bitseq_t *bs)
 
 size_t bs_sizepacked(size_t size_unpacked)
 {
-    return (size_unpacked + TWO_BIT_MASK) >> BITS_PER_BLOCK;
+    return (size_unpacked + MASK_TWOBIT) >> BITS_PER_CHAR;
 }
 
 
 uint8_t bs_dnatwobit(const char base)
 {
-    return (base >> 1) & TWO_BIT_MASK;
+    return (base >> 1) & MASK_TWOBIT;
 }
 
 
@@ -50,15 +51,15 @@ bitseq_t *bs_pack(const char *seq)
     size_t size_unpack = strlen(seq);
     bitseq_t *bs = bs_init(size_unpack);
 
-    uint8_t mask = BITS_PER_BYTE;
+    uint8_t mask = BITS_PER_BLOCK;
     size_t idx_block = 0;
     for (size_t idx_base = 0; idx_base < size_unpack; idx_base++) {
         uint8_t block_val = bs_dnatwobit(seq[idx_base]);
-        mask -= BITS_PER_BLOCK;
+        mask -= BITS_PER_CHAR;
         bs->bitseq[idx_block] |= (block_val << mask);
 
         if (mask == 0) {
-            mask = BITS_PER_BYTE;
+            mask = BITS_PER_BLOCK;
             idx_block++;
         }
     }
@@ -67,32 +68,21 @@ bitseq_t *bs_pack(const char *seq)
 }
 
 
-void bs_set(bitseq_t *bs, size_t index, int flag)
+void bs_set(bitseq_t *bs, size_t index)
 {
-    size_t idx_byte = index / BITS_PER_BYTE;
-    size_t idx_bit = index % BITS_PER_BYTE;
-    uint8_t mask = MSB_MASK >> idx_bit;
+    bs->bitseq[index / BITS_PER_BLOCK] |= (1 << (index % BITS_PER_BLOCK));
+}
 
-    if (idx_byte >= bs->size_packed)
-        return;
 
-    if (flag == 0)
-        bs->bitseq[idx_byte] &= ~mask;
-    else
-        bs->bitseq[idx_byte] |= mask;
+void bs_clear(bitseq_t *bs, size_t index)
+{
+    bs->bitseq[index / BITS_PER_BLOCK] &= ~(1 << (index % BITS_PER_BLOCK));
 }
 
 
 int bs_exist(bitseq_t *bs, size_t index)
 {
-    size_t idx_byte = index / BITS_PER_BYTE;
-    size_t idx_bit = index % BITS_PER_BYTE;
-    uint8_t mask = MSB_MASK >> idx_bit;
-
-    if (idx_byte >= bs->size_packed)
-        return 0;
-
-    return (bs->bitseq[idx_byte] & mask) ? 1 : 0;
+    return (bs->bitseq[index / BITS_PER_BLOCK] & (1 << (index % BITS_PER_BLOCK))) ? 1 : 0;
 }
 
 
@@ -118,7 +108,7 @@ void bs_iter_begin(bitseq_iter_t *iter)
 int bs_iter_next(bitseq_iter_t *iter, bitseq_t *bs)
 {
     // check current bit
-    if (iter->idx_bit >= BITS_PER_BYTE) {
+    if (iter->idx_bit >= BITS_PER_BLOCK) {
         iter->idx_bit = 0;
         iter->idx_byte++; // next block
     }
@@ -128,7 +118,7 @@ int bs_iter_next(bitseq_iter_t *iter, bitseq_t *bs)
         return 0;
 
     // update mask
-    uint8_t mask = MSB_MASK >> iter->idx_bit;
+    uint8_t mask = MASK_MSB >> iter->idx_bit;
     iter->value = (bs->bitseq[iter->idx_byte] & mask) ? 1 : 0;
 
     // increament bit

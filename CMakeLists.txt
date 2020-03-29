@@ -17,9 +17,9 @@ pkg_check_modules(ZLIB REQUIRED zlib)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${ZLIB_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${ZLIB_LIBRARIES})
 
-pkg_check_modules(HTSLIB REQUIRED htslib)
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${HTSLIB_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} ${HTSLIB_LIBRARIES})
+#pkg_check_modules(HTSLIB REQUIRED htslib)
+#target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${HTSLIB_INCLUDE_DIRS})
+#target_link_libraries(${PROJECT_NAME} ${HTSLIB_LIBRARIES})
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
