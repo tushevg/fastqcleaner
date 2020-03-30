@@ -1,138 +1,66 @@
 #include "fqparser.h"
 
-static inline char *kscat(const char *read_se, const char *read_pe)
+static inline float fq_qscore(const char *qual)
 {
-    char *buffer = malloc(strlen(read_se) + strlen(read_pe) + 1);
+    float score = 0.0f;
+    int l = 0;
+    while (*qual) {
+        l++;
+        score += (float)(*qual++) - 33;
+    }
+    return score / l;
+}
+
+
+static inline char *fq_strcat(const char *seq_se, const char *seq_pd)
+{
+    char *buffer = malloc(strlen(seq_se) + strlen(seq_pd) + 1);
     char *p_buffer = buffer;
 
-    const char *p_read = read_se;
-    while (*p_read != '\0')
-        *(++p_buffer) = *(++p_read);
+    while (*seq_se)
+        *p_buffer++ = *seq_se++;
 
-    p_read = read_pe;
-    while (*p_read != '\0')
-        *(++p_buffer) = *(++p_read);
+    while (*seq_pd)
+        *p_buffer++ = *seq_pd++;
 
     *p_buffer = '\0';
+
     return buffer;
 }
 
-static inline float fq_qscore(kseq_t *ks)
+
+static inline void fq_write(gzFile fo, kseq_t *ks)
 {
-    float score = 0.0f;
-    for (size_t b = 0; b < ks->qual.l; b++) {
-        score += (float)(ks->qual.s[b]) - 33;
-    }
-    return (score / ks->qual.l);
+    gzprintf(fo, "@%s %s\n", ks->name.s, ks->comment.s);
+    gzprintf(fo, "%s\n", ks->seq.s);
+    gzprintf(fo, "+\n");
+    gzprintf(fo, "%s\n", ks->qual.s);
 }
 
 
-static void fq_parse_se(fqparser_t *fq, float qs_thresh)
+int fq_open(fqparser_t *fq, const char *file_fq_se, const char *file_fq_pd)
 {
-    int l = 0;
-    khint_t kiter;
-
-    while ((l = kseq_read(fq->ks_se)) >= 0) {
-
-        fq->count_raw++;
-
-        // check read quality
-        float qs = fq_qscore(fq->ks_se);
-        if (qs < qs_thresh) {
-            fq->count_qual++;
-            continue;
-        }
-
-        fqvalue_t qvalue = {fq->count_raw, qs};
-
-        int absent;
-        kiter = kh_put(khStr, fq->kshash, fq->ks_se->seq.s, &absent);
-        if (absent) {
-            kh_key(fq->kshash, kiter) = strdup(fq->ks_se->seq.s);
-            kh_value(fq->kshash, kiter) = qvalue;
-        }
-        else {
-            fq->count_duplicates++;
-            fqvalue_t hvalue = kh_value(fq->kshash, kiter);
-            if (hvalue.score < qvalue.score)
-                kh_value(fq->kshash, kiter) = qvalue;
-        }
-    }
-}
-
-
-static void fq_parse_pe(fqparser_t *fq, float qs_thresh)
-{
-    khint_t kiter;
-    while ((kseq_read(fq->ks_se) >= 0) && (kseq_read(fq->ks_pe) >= 0)) {
-
-        fq->count_raw++;
-
-        // check read quality
-        float qs = (fq_qscore(fq->ks_se) + fq_qscore(fq->ks_pe)) / 2.0f;
-        if (qs < qs_thresh) {
-            fq->count_qual++;
-            continue;
-        }
-
-        fqvalue_t qvalue = {fq->count_raw, qs};
-        char *read = kscat(fq->ks_se->seq.s, fq->ks_pe->seq.s);
-        int absent;
-        kiter = kh_put(khStr, fq->kshash, read, &absent);
-        if (absent) {
-            kh_key(fq->kshash, kiter) = read;
-            kh_value(fq->kshash, kiter) = qvalue;
-        }
-        else {
-            fq->count_duplicates++;
-            fqvalue_t hvalue = kh_value(fq->kshash, kiter);
-            if (hvalue.score < qvalue.score)
-                kh_value(fq->kshash, kiter) = qvalue;
-            free(read);
-        }
-
-    }
-}
-
-
-int fq_open(fqparser_t *fq, const char *file_fq_se, const char *file_fq_pe)
-{
-    // single-end file
-    fq->fp_se = gzopen(file_fq_se, "r");
-    if (!fq->fp_se) {
+    fq->fh_se = gzopen(file_fq_se, "r");
+    if (!fq->fh_se) {
         fprintf(stderr, "fastqcleaner::error, failed to open %s\n", file_fq_se);
         return 1;
     }
 
-    fq->ks_se = kseq_init(fq->fp_se);
-    if (!fq->ks_se) {
-        fprintf(stderr, "fastqcleaner::error, failed to allocate kseq\n");
-        return 1;
-    }
-
-    // paired-end
-    if (file_fq_pe != NULL) {
-        fq->fp_pe = gzopen(file_fq_pe, "r");
-        if (!fq->fp_pe) {
-            fprintf(stderr, "fastqcleaner::error, failed to open %s\n", file_fq_pe);
-            return 1;
-        }
-
-        fq->ks_pe = kseq_init(fq->fp_pe);
-        if (!fq->ks_pe) {
-            fprintf(stderr, "fastqcleaner::error, failed to allocate kseq pair\n");
+    if (file_fq_pd) {
+        fq->fh_pd = gzopen(file_fq_pd, "r");
+        if (!fq->fh_pd) {
+            fprintf(stderr, "fastqcleaner::error, failed to open %s\n", file_fq_pd);
             return 1;
         }
     }
 
-    // khash with char key
     fq->kshash = kh_init(khStr);
     if (!fq->kshash) {
         fprintf(stderr, "fastqcleaner::error, failed to allocate khash\n");
         return 1;
     }
 
-    // set counters
+    fq->bitset = NULL;
     fq->count_raw = 0;
     fq->count_qual = 0;
     fq->count_duplicates = 0;
@@ -144,46 +72,218 @@ int fq_open(fqparser_t *fq, const char *file_fq_se, const char *file_fq_pe)
 
 void fq_close(fqparser_t *fq)
 {
-    if (fq->kshash) {
-        for (khint_t k = 0; k < kh_end(fq->kshash); ++k)
-                if (kh_exist(fq->kshash, k))
-                    free((char*)kh_key(fq->kshash, k));
+    if (fq->fh_se)
+        gzclose(fq->fh_se);
+
+    if (fq->fh_pd)
+        gzclose(fq->fh_pd);
+
+    if (fq->kshash)
         kh_destroy(khStr, fq->kshash);
-    }
 
     if (fq->bitset)
         bs_destroy(fq->bitset);
-
-    if (fq->ks_se)
-        kseq_destroy(fq->ks_se);
-
-    if (fq->ks_pe)
-        kseq_destroy(fq->ks_pe);
-
-    if (fq->fp_pe)
-        gzclose(fq->fp_pe);
-
-    if (fq->fp_se)
-        gzclose(fq->fp_se);
 }
 
 
-void fq_parse(fqparser_t *fq, float qs_thresh)
+int fq_parser(fqparser_t *fq, float qthresh)
 {
-    if (fq->fp_pe)
-        fq_parse_pe(fq, qs_thresh);
-    else
-        fq_parse_se(fq, qs_thresh);
+    if (fq->fh_pd)
+        return fq_parser_pd(fq, qthresh);
+
+    return fq_parser_se(fq, qthresh);
 }
 
 
-void fq_mask(fqparser_t *fq)
+int fq_parser_se(fqparser_t *fq, float qthresh)
 {
+    kseq_t *ks = kseq_init(fq->fh_se);
+    khint_t kiter;
+    int state = 0;
+    while ((state = kseq_read(ks)) >= 0) {
+        fq->count_raw++;
+        float qscore = fq_qscore(ks->qual.s);
 
+        if (qscore < qthresh) {
+            fq->count_qual++;
+            continue;
+        }
+
+        fqvalue_t value = {fq->count_raw, qscore};
+        int absent;
+        kiter = kh_put(khStr, fq->kshash, ks->seq.s, &absent);
+        if (absent) {
+            fq->count_clean++;
+            kh_key(fq->kshash, kiter) = strdup(ks->seq.s);
+            kh_value(fq->kshash, kiter) = value;
+        }
+        else {
+            fq->count_duplicates++;
+            fqvalue_t value_stored = kh_value(fq->kshash, kiter);
+            if (value_stored.score < value.score)
+                kh_value(fq->kshash, kiter) = value;
+        }
+
+    }
+
+    kseq_destroy(ks);
+    return 0;
 }
 
 
-void fq_write(fqparser_t *fq, const char *file_tag)
+int fq_parser_pd(fqparser_t *fq, float qthresh)
 {
+    kseq_t *ks_se = kseq_init(fq->fh_se);
+    kseq_t *ks_pd = kseq_init(fq->fh_pd);
 
+    khint_t kiter;
+    int state_se, state_pd = 0;
+    while (((state_se = kseq_read(ks_se)) >= 0) &&
+           ((state_pd = kseq_read(ks_pd)) >= 0)) {
+        fq->count_raw++;
+        float qscore = fq_qscore(ks_se->qual.s);
+        qscore += fq_qscore(ks_pd->qual.s);
+        qscore /= 2.0f;
+
+        if (qscore < qthresh) {
+            fq->count_qual++;
+            continue;
+        }
+
+        fqvalue_t value = {fq->count_raw, qscore};
+        char *key = fq_strcat(ks_se->seq.s, ks_pd->seq.s);
+        int absent;
+        kiter = kh_put(khStr, fq->kshash, key, &absent);
+        if (absent) {
+            fq->count_clean++;
+            kh_key(fq->kshash, kiter) = key;
+            kh_value(fq->kshash, kiter) = value;
+        }
+        else {
+            fq->count_duplicates++;
+            fqvalue_t value_stored = kh_value(fq->kshash, kiter);
+            if (value_stored.score < value.score)
+                kh_value(fq->kshash, kiter) = value;
+            free(key);
+        }
+
+    }
+
+    kseq_destroy(ks_se);
+    kseq_destroy(ks_pd);
+    return 0;
+}
+
+
+int fq_hash_to_bitset(fqparser_t *fq)
+{
+    fq->bitset = bs_init(fq->count_raw);
+    if (!fq->bitset) {
+        fprintf(stderr, "fastqcleaner::error, failed to allocate bitset\n");
+        return 1;
+    }
+
+    for (khint_t k = kh_begin(fq->kshash); k != kh_end(fq->kshash); ++k) {
+        if (kh_exist(fq->kshash, k)) {
+            fqvalue_t value = kh_value(fq->kshash, k);
+            bs_set(fq->bitset, value.id - 1);
+            free((char *)kh_key(fq->kshash, k));
+        }
+    }
+
+    return 0;
+}
+
+
+int fq_stats(fqparser_t *fq, const char *file_tag)
+{
+    char *file_out = fq_strcat(file_tag, "_counts.txt");
+    FILE *fo = fopen(file_out, "w");
+    if (!fo) {
+        fprintf(stderr, "fastqcleaner::error, failed to create file %s\n", file_out);
+        return 1;
+    }
+
+    uint32_t test_raw = fq->count_qual + fq->count_duplicates + fq->count_clean;
+    int check = (fq->count_raw == test_raw) ? 1 : 0;
+    fprintf(fo, "type\tcounts\n");
+    fprintf(fo, "raw\t%d\n", fq->count_raw);
+    fprintf(fo, "filtered\t%d\n", fq->count_qual);
+    fprintf(fo, "duplicated\t%d\n", fq->count_duplicates);
+    fprintf(fo, "clean\t%d\n", fq->count_clean);
+    fprintf(fo, "check\t%d\n", check);
+
+    fclose(fo);
+    free(file_out);
+    return 0;
+}
+
+
+int fq_writer(fqparser_t *fq, const char *file_tag)
+{
+    if (fq->fh_pd)
+        return fq_writer_pd(fq, file_tag);
+
+    return fq_writer_se(fq, file_tag);
+}
+
+
+int fq_writer_se(fqparser_t *fq, const char *file_tag)
+{
+    char *file_out = fq_strcat(file_tag, ".fastq.gz");
+    gzFile fo = gzopen(file_out, "wb");
+
+    gzrewind(fq->fh_se);
+    kseq_t *ks = kseq_init(fq->fh_se);
+    int state = 0;
+    size_t key = 0;
+    while ((state = kseq_read(ks)) >= 0) {
+
+        if (bs_exist(fq->bitset, key) == 1)
+            fq_write(fo, ks);
+
+        key++;
+    }
+
+    kseq_destroy(ks);
+    gzclose(fo);
+    free(file_out);
+    return 0;
+}
+
+
+int fq_writer_pd(fqparser_t *fq, const char *file_tag)
+{
+    char *file_out_se = fq_strcat(file_tag, "_1.fastq.gz");
+    char *file_out_pd = fq_strcat(file_tag, "_2.fastq.gz");
+
+    gzFile fo_se = gzopen(file_out_se, "wb");
+    gzFile fo_pd = gzopen(file_out_pd, "wb");
+
+    gzrewind(fq->fh_se);
+    gzrewind(fq->fh_pd);
+
+    kseq_t *ks_se = kseq_init(fq->fh_se);
+    kseq_t *ks_pd = kseq_init(fq->fh_pd);
+
+    int state_se, state_pd = 0;
+    size_t key = 0;
+    while (((state_se = kseq_read(ks_se)) >= 0) &&
+           ((state_pd = kseq_read(ks_pd)) >= 0)) {
+
+        if (bs_exist(fq->bitset, key) == 1) {
+            fq_write(fo_se, ks_se);
+            fq_write(fo_pd, ks_pd);
+        }
+
+        key++;
+    }
+
+
+    gzclose(fo_se);
+    gzclose(fo_pd);
+    free(file_out_se);
+    free(file_out_pd);
+
+    return 0;
 }

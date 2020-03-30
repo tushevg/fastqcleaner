@@ -1,10 +1,31 @@
 #include "tests.h"
 
+static float test_qscore(const char *qual_se, const char *qual_pd)
+{
+    float score = 0.0f;
+    int l = 0;
+    while(*qual_se) {
+        l++;
+        score += (*qual_se++) - 33;
+    }
+
+    while(*qual_pd) {
+        l++;
+        score += (*qual_pd++) - 33;
+    }
+
+
+    return score / l;
+}
+
+
 int run_tests(void)
 {
     int result = 0;
     result += test_bs_packseq();
     result += test_bs_bitset();
+    //result += test_kseq_writer();
+    result += test_kseq_qscore();
     return result;
 }
 
@@ -38,36 +59,88 @@ int test_bs_bitset(void)
 }
 
 
-/*
-khint_t k;
-k = kh_put(type, h, 55, &absent);
-if (absent) {
-  myval_t *cl1 = &kh_val(h, k);
-  cl1->id = 55;
-  cl1->len = 3;
-  cl1->stream = strdup("abc");
+int test_kseq_writer(void)
+{
+    const char *file_name = "/Users/tushevg/Desktop/SepiaTranscriptome/test/SingleEnd.fastq.gz";
+
+    gzFile fp = gzopen(file_name, "r");
+    if (!fp) {
+        fprintf(stderr, "fastqcleaner::error, failed to open %s\n", file_name);
+        return 1;
+    }
+
+    int l,n = 0;
+    kseq_t *ks = kseq_init(fp);
+    while((l = kseq_read(ks)) >= 0) {
+        n++;
+        printf("@%s %s\n", ks->name.s, ks->comment.s);
+        printf("%s\n", ks->seq.s);
+        printf("+\n");
+        printf("%s\n", ks->qual.s);
+
+        if (n == 3)
+            break;
+    }
+    kseq_destroy(ks);
+
+    gzrewind(fp);
+
+    n = 0;
+
+    const char *file_out = "/Users/tushevg/Desktop/temp.fastq.gz";
+    gzFile fo = gzopen(file_out, "wb");
+
+    ks = kseq_init(fp);
+    while((l = kseq_read(ks)) >= 0) {
+        n++;
+
+        gzprintf(fo, "@%s %s\n", ks->name.s, ks->comment.s);
+        gzprintf(fo, "%s\n", ks->seq.s);
+        gzprintf(fo, "+\n");
+        gzprintf(fo, "%s\n", ks->qual.s);
+
+        if (n == 3)
+            break;
+    }
+    kseq_destroy(ks);
+
+
+
+    // clean
+    gzclose(fp);
+    gzclose(fo);
+
+    return 0;
 }
 
 
-#include "khash.h"
-typedef struct {
-  int x, y;
-} myval_t;
-KHASH_MAP_INIT_STR(str, myval_t)
-int main(void) {
-  khash_t(str) *h;
-  khint_t k;
-  int absent;
-  h = kh_init(str);
-  k = kh_put(str, h, "foo", &absent);
-  kh_val(h, k).x = 1;
-  kh_val(h, k).y = 2;
-  k = kh_get(str, h, "foo");
-  if (k != kh_end(h))
-    printf("%d,%d\n", kh_val(h,k).x, kh_val(h,k).y);
-  // if keys are allocated on heap, free them before calling kh_destroy()
-  kh_destroy(str, h);
-  return 0;
-}
+int test_kseq_qscore(void)
+{
+    const char *file_name = "/Users/tushevg/Desktop/SepiaTranscriptome/test/SingleEnd.fastq.gz";
 
- */
+    gzFile fp = gzopen(file_name, "r");
+    if (!fp) {
+        fprintf(stderr, "fastqcleaner::error, failed to open %s\n", file_name);
+        return 1;
+    }
+
+    int l,n = 0;
+    kseq_t *ks = kseq_init(fp);
+    while((l = kseq_read(ks)) >= 0) {
+        n++;
+
+        // print record
+        printf("@%s %s\n", ks->name.s, ks->comment.s);
+        printf("%s\n", ks->seq.s);
+        printf("+\n");
+        printf("%s\n", ks->qual.s);
+
+        printf("%.2f\n", test_qscore(ks->qual.s, 0));
+
+        if (n == 3)
+            break;
+    }
+    kseq_destroy(ks);
+    gzclose(fp);
+    return 0;
+}
