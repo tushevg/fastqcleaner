@@ -1,7 +1,7 @@
 #include "bitseq.h"
 
 static const uint8_t BITS_PER_BYTE = __CHAR_BIT__;
-static const uint8_t BITS_PER_BLOCK = sizeof(uint8_t) * BITS_PER_BYTE;
+static const uint8_t BITS_PER_BLOCK = sizeof(uint8_t) * __CHAR_BIT__;
 static const uint8_t BITS_PER_CHAR = 2;
 static const uint8_t MASK_TWOBIT = 3;
 static const uint8_t MASK_MSB = 128;
