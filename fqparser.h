@@ -1,45 +1,49 @@
 #ifndef FQPARSER_H
 #define FQPARSER_H
 
-#include <zlib.h>
-#include "kseq.h"
-#include "khash.h"
-#include "bitseq.h"
-
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <zlib.h>
+#include "kroundup.h"
+#include "nthash.h"
 
-typedef struct _fqvalue {
-    uint32_t id;
-    float score;
-} fqvalue_t;
+#define BUFFER_SIZE 4096
 
-KSEQ_INIT(gzFile, gzread)
-KHASH_MAP_INIT_STR(khStr, fqvalue_t)
+typedef struct _fqstring {
+    size_t l, m;
+    char *s;
+} fqstring_t;
 
-typedef struct _fqparser {
-    gzFile fh_se;
-    gzFile fh_pd;
-    khash_t(khStr) *kshash;
-    bitseq_t *bitset;
-    uint32_t count_raw;
-    uint32_t count_qual;
-    uint32_t count_duplicates;
-    uint32_t count_clean;
-} fqparser_t;
 
-int fq_open(fqparser_t *fq, const char *file_fq_se, const char *file_fq_pd);
-void fq_close(fqparser_t *fq);
+typedef struct _fqstream {
+    gzFile fp;
+    unsigned char *uncompressed_block;
+    size_t block_offset, block_length;
+} fqstream_t;
 
-int fq_parser(fqparser_t *fq, float qthresh);
-int fq_parser_se(fqparser_t *fq, float qthresh);
-int fq_parser_pd(fqparser_t *fq, float qthresh);
 
-int fq_hash_to_bitset(fqparser_t *fq);
-int fq_stats(fqparser_t *fq, const char *file_tag);
+typedef struct _fqrecord {
+    fqstring_t *name;
+    fqstring_t *seq;
+    fqstring_t *opt;
+    fqstring_t *qual;
+    fqstream_t *stream;
+} fqrecord_t;
 
-int fq_writer(fqparser_t *fq, const char *file_tag);
-int fq_writer_se(fqparser_t *fq, const char *file_tag);
-int fq_writer_pd(fqparser_t *fq, const char *file_tag);
+fqstring_t *fqstr_init(void);
+void fqstr_destroy(fqstring_t *fqstr);
 
+fqstream_t *fqs_init(const char *file_fqgz);
+void fqs_destroy(fqstream_t *fqs);
+int fqs_getline(fqstream_t *fqs, fqstring_t *fqstr, int delim);
+
+fqrecord_t *fqr_open(const char *file_fqgz);
+void fqr_close(fqrecord_t *fqr);
+int fqr_read(fqrecord_t *fqr);
+void fqr_print(fqrecord_t *fqr);
+void fqr_write(fqrecord_t *fqr, gzFile fo);
+float fqr_qscore(fqstring_t *qual);
+uint64_t fqr_hash(fqstring_t *seq);
 
 #endif // FQPARSER_H
