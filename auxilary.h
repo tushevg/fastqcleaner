@@ -8,10 +8,10 @@
 // define parameters
 typedef struct _aux_config_t
 {
-    const char *fh_input;
-    const char *fh_pair;
-    const char *fo_tag;
-    float qual;
+    const char *file_single;
+    const char *file_paired;
+    const char *tag_output;
+    float quality_threshold;
 } aux_config_t;
 
 int aux_help(void);

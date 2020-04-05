@@ -61,7 +61,7 @@ static inline uint64_t swapbits033(const uint64_t v) {
 // forward-strand hash value of the base kmer, i.e. fhval(kmer_0)
 static inline uint64_t NTF64_Base(const char * kmerSeq, const unsigned k) {
     uint64_t hVal=0;
-    for(unsigned i=0; i<k; i++) {
+    for (unsigned i=0; i<k; i++) {
         hVal = rol1(hVal);
         hVal = swapbits033(hVal);
         hVal ^= seedTab[(unsigned char)kmerSeq[i]];
@@ -72,7 +72,7 @@ static inline uint64_t NTF64_Base(const char * kmerSeq, const unsigned k) {
 // reverse-strand hash value of the base kmer, i.e. rhval(kmer_0)
 static inline uint64_t NTR64_Base(const char * kmerSeq, const unsigned k) {
     uint64_t hVal=0;
-    for(unsigned i=0; i<k; i++) {
+    for (unsigned i=0; i<k; i++) {
         hVal = rol1(hVal);
         hVal = swapbits033(hVal);
         hVal ^= seedTab[(unsigned char)kmerSeq[k-1-i]&cpOff];

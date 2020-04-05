@@ -1,10 +1,11 @@
 #include "bitset.h"
 
-static const int BITS_PER_WORD = sizeof(uint64_t) * __CHAR_BIT__;
+static const size_t BITS_PER_WORD = sizeof(uint64_t) * __CHAR_BIT__;
+//static const uint32_t BITS_PER_WORD = __CHAR_BIT__;
 
 static inline size_t bs_bitstowords(size_t bits)
 {
-    return (bits + 1) / BITS_PER_WORD;
+    return (bits + (BITS_PER_WORD - 1)) >> 6;
 }
 
 
@@ -33,19 +34,35 @@ void bs_destroy(bitset_t *bs)
 
 void bs_set(bitset_t *bs, size_t idx_bit)
 {
-    bs->words[idx_bit / BITS_PER_WORD] |= (1 << (idx_bit % BITS_PER_WORD));
+    if (idx_bit >= bs->size_bits)
+        return;
+    size_t idx_word = idx_bit >> 6;
+    bs->words[idx_word] |= ((uint64_t)1) << (idx_bit % BITS_PER_WORD);
 }
 
 
-int bs_exist(bitset_t *bs, size_t idx_bit)
+int bs_get(bitset_t *bs, size_t idx_bit)
 {
-    return (bs->words[idx_bit / BITS_PER_WORD] & (1 << (idx_bit % BITS_PER_WORD))) ? 1 : 0;
+    if (idx_bit >= bs->size_bits)
+        return 0;
+    size_t idx_word = idx_bit >> 6;
+    return (bs->words[idx_word] & (((uint64_t)1) << (idx_bit % BITS_PER_WORD))) ? 1 : 0;
 }
 
 
 void bs_clear(bitset_t *bs, size_t idx_bit)
 {
-    bs->words[idx_bit / BITS_PER_WORD] &= ~(1 << (idx_bit % BITS_PER_WORD));
+    size_t idx_word = idx_bit / BITS_PER_WORD;
+    if (idx_word >= bs->size_words)
+        return;
+    bs->words[idx_word] &= ~(1 << (idx_bit % BITS_PER_WORD));
+}
+
+
+void bs_print(bitset_t *bs)
+{
+    for (size_t idx_word = 0; idx_word < bs->size_words; ++idx_word)
+        printf("%ld\t%llu\n", idx_word, bs->words[idx_word]);
 }
 
 

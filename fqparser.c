@@ -1,14 +1,14 @@
 #include "fqparser.h"
 
-fqstring_t *ks_init(void)
+fqstring_t *fqstr_init(void)
 {
     fqstring_t *fqstr = (fqstring_t *)calloc(1, sizeof(fqstring_t));
-    if(!fqstr) return NULL;
+    if (!fqstr) return NULL;
     return fqstr;
 }
 
 
-void ks_destroy(fqstring_t *fqstr)
+void fqstr_destroy(fqstring_t *fqstr)
 {
     if (!fqstr) return;
     if (fqstr->s) free(fqstr->s);
@@ -16,7 +16,7 @@ void ks_destroy(fqstring_t *fqstr)
 }
 
 
-fqstream_t *fqs_init(const char *file_fqgz)
+fqstream_t *fqs_open(const char *file_fqgz)
 {
     fqstream_t *fqs = (fqstream_t *)calloc(1, sizeof(fqstream_t));
     if (!fqs) return 0;
@@ -25,14 +25,14 @@ fqstream_t *fqs_init(const char *file_fqgz)
     fqs->block_length = 0;
     fqs->fp = gzopen(file_fqgz, "r");
     if (!fqs->fp) {
-        fqs_destroy(fqs);
+        fqs_close(fqs);
         return 0;
     }
     return fqs;
 }
 
 
-void fqs_destroy(fqstream_t *fqs)
+void fqs_close(fqstream_t *fqs)
 {
     if (!fqs) return;
     gzclose(fqs->fp);
@@ -40,19 +40,24 @@ void fqs_destroy(fqstream_t *fqs)
     free(fqs);
 }
 
+/*
+ * returns >=0 (normal) number of characters read
+ * returns -1 eof reached
+ * -2   reading stream
+ */
 
-int fqs_getline(fqstream_t *fqs, fqstring_t *fqstr, int delim)
+int fqs_getline(fqstream_t *fqs, fqstring_t *fqstr, int delim, int append)
 {
     int state = 0;
     size_t l = 0;
-    fqstr->l = 0;
+    fqstr->l = (append == 1) ? fqstr->l : 0;
 
     do {
         // read buffer
         if (fqs->block_offset >= fqs->block_length) {
             int bytes_read = gzread(fqs->fp, fqs->uncompressed_block, BUFFER_SIZE - 1);
             if (bytes_read == 0) {state = -1; break;} // eof reached
-            if (bytes_read == -1) {state = -2; break;} // error decompressing
+            if (bytes_read == -1) {state = -2; break;} // error reading stream
             fqs->uncompressed_block[bytes_read] = 0;
             fqs->block_offset = 0;
             fqs->block_length = (size_t)(bytes_read);
@@ -81,45 +86,90 @@ int fqs_getline(fqstream_t *fqs, fqstring_t *fqstr, int delim)
 
     } while (state == 0);
 
-    if (fqstr->l == 0 && state < 0) return state;
+    //if (fqstr->l == 0 && state < 0) return (state + 1);
+    if (state < 0) return state; // -1 eof or -2 decompression error
     if ( delim=='\n' && fqstr->l>0 && fqstr->s[fqstr->l-1]=='\r' ) fqstr->l--;
     fqstr->s[fqstr->l] = 0;
     return (int)fqstr->l;
 }
 
 
-fqrecord_t *fqr_open(const char *file_fqgz)
+fqrecord_t *fqr_init(void)
 {
     fqrecord_t *fqr = (fqrecord_t *)calloc(1, sizeof(fqrecord_t));
     if (!fqr) return NULL;
-    fqr->name = ks_init();
-    fqr->seq = ks_init();
-    fqr->opt = ks_init();
-    fqr->qual = ks_init();
-    fqr->stream = fqs_init(file_fqgz);
+    fqr->name = fqstr_init();
+    fqr->seq = fqstr_init();
+    fqr->opt = fqstr_init();
+    fqr->qual = fqstr_init();
     return fqr;
 }
 
 
-void fqr_close(fqrecord_t *fqr)
+void fqr_destroy(fqrecord_t *fqr)
 {
     if (!fqr) return;
-    ks_destroy(fqr->name);
-    ks_destroy(fqr->seq);
-    ks_destroy(fqr->opt);
-    ks_destroy(fqr->qual);
-    fqs_destroy(fqr->stream);
+    fqstr_destroy(fqr->name);
+    fqstr_destroy(fqr->seq);
+    fqstr_destroy(fqr->opt);
+    fqstr_destroy(fqr->qual);
     free(fqr);
 }
 
-
-int fqr_read(fqrecord_t *fqr)
+/*
+ * >= 0 record size (normal)
+ * -1 end of file
+ * -2 truncated record
+ */
+int fqr_read_se(fqrecord_t *fqr, fqstream_t *fqs)
 {
-    if (fqs_getline(fqr->stream, fqr->name, '\n') <= 0) return -4;
-    if (fqs_getline(fqr->stream, fqr->seq, '\n') <= 0) return -3;
-    if (fqs_getline(fqr->stream, fqr->opt, '\n') <= 0) return -2;
-    if (fqs_getline(fqr->stream, fqr->qual, '\n') < 0) return -1;
-    return 0;
+    int state;
+
+    state = fqs_getline(fqs, fqr->name, '\n', 0);
+    if (state < 0) return state;
+
+    state = fqs_getline(fqs, fqr->seq, '\n', 0);
+    if (state < 0) return state;
+
+    state = fqs_getline(fqs, fqr->opt, '\n', 0);
+    if (state < 0) return state;
+
+    state = fqs_getline(fqs, fqr->qual, '\n', 0);
+    if (state < 0) return state;
+
+    return (int)(fqr->name->l + fqr->seq->l + fqr->opt->l + fqr->qual->l);
+}
+
+
+int fqr_read_pe(fqrecord_t *fqr, fqstream_t *fqs_1, fqstream_t *fqs_2)
+{
+    int state;
+
+    state = fqs_getline(fqs_1, fqr->name, '\n', 0);
+    if (state < 0) return state;
+
+    state = fqs_getline(fqs_2, fqr->name, '\n', 0); // names should be the same
+    if (state < 0) return state;
+
+    state = fqs_getline(fqs_1, fqr->seq, '\n', 0);
+    if (state < 0) return state;
+
+    state = fqs_getline(fqs_2, fqr->seq, '\n', 1); // append sequence
+    if (state < 0) return state;
+
+    state = fqs_getline(fqs_1, fqr->opt, '\n', 0);
+    if (state < 0) return state;
+
+    state = fqs_getline(fqs_2, fqr->opt, '\n', 0); // options should be the same
+    if (state < 0) return state;
+
+    state = fqs_getline(fqs_1, fqr->qual, '\n', 0);
+    if (state < 0) return state;
+
+    state = fqs_getline(fqs_2, fqr->qual, '\n', 1); // append quality
+    if (state < 0) return state;
+
+    return (int)(fqr->name->l + fqr->seq->l + fqr->opt->l + fqr->qual->l);
 }
 
 
@@ -147,7 +197,7 @@ inline float fqr_qscore(fqstring_t *qual)
 {
     int score = 0;
     const char *qp = qual->s;
-    while(*qp)
+    while (*qp)
         score += (*qp++) - 33;
     return (float)score / qual->l;
 }

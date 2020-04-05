@@ -1,6 +1,7 @@
 #ifndef BITSET_H
 #define BITSET_H
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -15,5 +16,6 @@ void bs_destroy(bitset_t *bs);
 void bs_set(bitset_t *bs, size_t idx_bit);
 int bs_get(bitset_t *bs, size_t idx_bit);
 void bs_clear(bitset_t *bs, size_t idx_bit);
+void bs_print(bitset_t *bs);
 
 #endif // BITSET_H

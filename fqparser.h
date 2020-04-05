@@ -10,6 +10,9 @@
 
 #define BUFFER_SIZE 4096
 
+
+
+
 typedef struct _fqstring {
     size_t l, m;
     char *s;
@@ -28,19 +31,20 @@ typedef struct _fqrecord {
     fqstring_t *seq;
     fqstring_t *opt;
     fqstring_t *qual;
-    fqstream_t *stream;
 } fqrecord_t;
 
 fqstring_t *fqstr_init(void);
 void fqstr_destroy(fqstring_t *fqstr);
 
-fqstream_t *fqs_init(const char *file_fqgz);
-void fqs_destroy(fqstream_t *fqs);
-int fqs_getline(fqstream_t *fqs, fqstring_t *fqstr, int delim);
+fqstream_t *fqs_open(const char *file_fqgz);
+void fqs_close(fqstream_t *fqs);
+int fqs_getline(fqstream_t *fqs, fqstring_t *fqstr, int delim, int append);
 
-fqrecord_t *fqr_open(const char *file_fqgz);
-void fqr_close(fqrecord_t *fqr);
-int fqr_read(fqrecord_t *fqr);
+fqrecord_t *fqr_init(void);
+void fqr_destroy(fqrecord_t *fqr);
+int fqr_read_se(fqrecord_t *fqr, fqstream_t *fqs);
+int fqr_read_pe(fqrecord_t *fqr, fqstream_t *fqs_1,  fqstream_t *fqs_2);
+
 void fqr_print(fqrecord_t *fqr);
 void fqr_write(fqrecord_t *fqr, gzFile fo);
 float fqr_qscore(fqstring_t *qual);

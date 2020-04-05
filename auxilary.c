@@ -2,7 +2,7 @@
 
 static const char VERSION[] = "v0.01";
 static const char PROJECT_NAME[] = "fastqcleaner";
-static const char AUX_DEFAULT_OUTPUT[] = "cleanfq";
+static const char AUX_DEFAULT_OUTPUT[] = "fqclean";
 static const double AUX_DEFAULT_MAPQ = 30.0;
 
 
@@ -36,47 +36,46 @@ int aux_help(void)
 
 int aux_parse(aux_config_t *aux, int argc, const char **argv)
 {
-    aux->fh_input = NULL;
-    aux->fh_pair = NULL;
-    aux->fo_tag = AUX_DEFAULT_OUTPUT;
-    aux->qual = AUX_DEFAULT_MAPQ;
+    aux->file_single = NULL;
+    aux->file_paired = NULL;
+    aux->tag_output = AUX_DEFAULT_OUTPUT;
+    aux->quality_threshold = AUX_DEFAULT_MAPQ;
 
     if ((argc < 3) || (9 < argc)) {
         fprintf(stderr, "%s:error, incorrect number of arguments\n", PROJECT_NAME);
         return aux_help();
     }
 
-    for(int i = 1; i < argc; i++) {
+    for (int i = 1; i < argc; i++) {
 
         if (aux_param_check(argv[i], "-h") ||
             aux_param_check(argv[i], "--help")) {
             return aux_help();
         }
-        else if(aux_param_check(argv[i], "-i") ||
+        else if (aux_param_check(argv[i], "-i") ||
                 aux_param_check(argv[i], "--input")) {
             i += 1;
-            aux->fh_input = argv[i];
+            aux->file_single = argv[i];
         }
-        else if(aux_param_check(argv[i], "-p") ||
+        else if (aux_param_check(argv[i], "-p") ||
                 aux_param_check(argv[i], "--pair")) {
             i += 1;
-            aux->fh_pair = argv[i];
+            aux->file_paired = argv[i];
         }
-        else if(aux_param_check(argv[i], "-o")||
+        else if (aux_param_check(argv[i], "-o")||
                 aux_param_check(argv[i], "--output")) {
             i += 1;
-            aux->fo_tag = argv[i];
+            aux->tag_output = argv[i];
         }
-        else if(aux_param_check(argv[i], "-q") ||
+        else if (aux_param_check(argv[i], "-q") ||
                 aux_param_check(argv[i], "--quality")) {
             i += 1;
-            aux->qual = strtof(argv[i], NULL);
+            aux->quality_threshold = strtof(argv[i], NULL);
         }
         else {
             fprintf(stderr, "%s::error, unknown parameter %s\n", PROJECT_NAME, argv[i]);
             return aux_help();
         }
-
     }
 
     return 0;
