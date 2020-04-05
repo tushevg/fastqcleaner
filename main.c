@@ -37,6 +37,7 @@ static inline char *filename(const char *path, const char *name) {
 
 
 
+
 void parse_fqrecord(khash_t(khStr) *kshash, fqcounters_t *counters, fqrecord_t *fqr, float qthresh)
 {
     counters->raw++;
@@ -122,11 +123,15 @@ int parse_paired_end(khash_t(khStr) *kshash, fqcounters_t *counters, const char 
 }
 
 
-int print_counters(const char *tag_output, fqcounters_t *counters)
+int print_counters(const char *tag_output, const char *ext_output, fqcounters_t *counters)
 {
-    const char *ext_output = "_counts.txt";
-    char *file_out = filename(tag_output, ext_output);
-    if (!file_out) return -1;
+    char file_out[256];
+    memset(file_out, '\0', sizeof(file_out));
+    size_t size_tag = strlen(tag_output);
+    size_t size_ext = strlen(ext_output);
+    strncpy(file_out, tag_output, size_tag);
+    strncpy(file_out + size_tag, ext_output, size_ext);
+
 
     FILE *fo = fopen(file_out, "w");
     if (!fo) {
@@ -142,7 +147,6 @@ int print_counters(const char *tag_output, fqcounters_t *counters)
     fprintf(fo, "clean\t%d\n", counters->clean);
     fprintf(fo, "check\t%d\n", check_sum);
 
-    free(file_out);
     fclose(fo);
     return 0;
 }
@@ -186,7 +190,6 @@ int print_fq(const char *tag_output, const char *ext_output, const char *file_fq
 int main(const int argc, const char *argv[])
 {
     int state = 0;
-
     aux_config_t aux;
     fqcounters_t counters = {0, 0, 0, 0};
     bitset_t *bs = 0;
@@ -197,7 +200,6 @@ int main(const int argc, const char *argv[])
     // parse auxiliary configuration
     if (aux_parse(&aux, argc, argv) != 0)
         return 1;
-
 
     // read files
     tic = clock();
@@ -218,7 +220,7 @@ int main(const int argc, const char *argv[])
 
 
     // print result
-    if (print_counters(aux.tag_output, &counters) != 0) {
+    if (print_counters(aux.tag_output, "_counts.txt", &counters) != 0) {
         fprintf(stderr, "fastqcleaner::error, failed to write out counters.\n");
         goto clean;
     }
@@ -277,7 +279,6 @@ clean:
 
     if (kshash)
         kh_destroy(khStr, kshash);
-
 
     return state;
 }
