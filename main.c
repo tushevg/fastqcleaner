@@ -27,15 +27,14 @@ static inline char *filename(const char *path, const char *name) {
     size_t size_path = strlen(path);
     size_t size_name = strlen(name);
     size_t size_file = size_path + size_name + 1;
-    char *file_out = (char *)malloc(size_file * sizeof(char));
+
+    char *file_out = (char *)calloc(size_file, sizeof(char));
     if (!file_out) return 0;
-    strncpy(file_out, path, size_path);
-    strncat(file_out + size_path, name, size_name);
+    memccpy(file_out, path, '\0', size_path);
+    memccpy(file_out + size_path, name, '\0', size_name);
     file_out[size_file - 1] = 0;
     return file_out;
 }
-
-
 
 
 void parse_fqrecord(khash_t(khStr) *kshash, fqcounters_t *counters, fqrecord_t *fqr, float qthresh)
@@ -125,19 +124,14 @@ int parse_paired_end(khash_t(khStr) *kshash, fqcounters_t *counters, const char 
 
 int print_counters(const char *tag_output, const char *ext_output, fqcounters_t *counters)
 {
-    char file_out[256];
-    memset(file_out, '\0', sizeof(file_out));
-    size_t size_tag = strlen(tag_output);
-    size_t size_ext = strlen(ext_output);
-    strncpy(file_out, tag_output, size_tag);
-    strncpy(file_out + size_tag, ext_output, size_ext);
-
+    char *file_out = filename(tag_output, ext_output);
 
     FILE *fo = fopen(file_out, "w");
     if (!fo) {
         free(file_out);
         return -1;
     }
+
     int check_sum = (counters->raw == (counters->dupl + counters->qual + counters->clean)) ? 1 : 0;
 
     fprintf(fo, "READS\tCOUNT\n");
@@ -148,6 +142,7 @@ int print_counters(const char *tag_output, const char *ext_output, fqcounters_t 
     fprintf(fo, "check\t%d\n", check_sum);
 
     fclose(fo);
+    free(file_out);
     return 0;
 }
 
