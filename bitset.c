@@ -1,14 +1,21 @@
 #include "bitset.h"
 
+// expected size of word is 64 bits
 static const size_t BITS_PER_WORD = sizeof(uint64_t) * __CHAR_BIT__;
-//static const uint32_t BITS_PER_WORD = __CHAR_BIT__;
 
+/*!
+ * \brief bs_bitstowords, estimates minimum number of words
+ *        that can accomodate given number of bits
+ * \param bits, size in bits
+ * \return size in words
+ */
 static inline size_t bs_bitstowords(size_t bits)
 {
     return (bits + (BITS_PER_WORD - 1)) >> 6;
 }
 
 
+// bs_init, allocates memory for bitset data structure
 bitset_t *bs_init(size_t size_bits)
 {
     bitset_t *bs = (bitset_t *)malloc(sizeof(bitset_t));
@@ -24,6 +31,7 @@ bitset_t *bs_init(size_t size_bits)
 }
 
 
+// bs_destroy, deallocates memory from bitset data pointer
 void bs_destroy(bitset_t *bs)
 {
     if (!bs) return;
@@ -32,6 +40,7 @@ void bs_destroy(bitset_t *bs)
 }
 
 
+// bs_set, set a given bit to one
 void bs_set(bitset_t *bs, size_t idx_bit)
 {
     if (idx_bit >= bs->size_bits)
@@ -41,6 +50,7 @@ void bs_set(bitset_t *bs, size_t idx_bit)
 }
 
 
+// bs_get, check if bit is up
 int bs_get(bitset_t *bs, size_t idx_bit)
 {
     if (idx_bit >= bs->size_bits)
@@ -50,6 +60,7 @@ int bs_get(bitset_t *bs, size_t idx_bit)
 }
 
 
+// bs_clear, set a given bit to zero
 void bs_clear(bitset_t *bs, size_t idx_bit)
 {
     size_t idx_word = idx_bit / BITS_PER_WORD;
@@ -59,12 +70,9 @@ void bs_clear(bitset_t *bs, size_t idx_bit)
 }
 
 
+// bs_print, prints each word in bitset
 void bs_print(bitset_t *bs)
 {
     for (size_t idx_word = 0; idx_word < bs->size_words; ++idx_word)
         printf("%ld\t%llu\n", idx_word, bs->words[idx_word]);
 }
-
-
-
-
