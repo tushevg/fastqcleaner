@@ -137,7 +137,7 @@ int aux_parse_pe(aux_config_t *aux)
     if (!fqs_1) return AUX_CODE_ERROR_READ_SE;
 
     fqstream_t *fqs_2 = fqs_open(aux->file_paired);
-    if (!fqs_1) {
+    if (!fqs_2) {
         fqs_close(fqs_1);
         return AUX_CODE_ERROR_READ_PE;
     }
@@ -221,7 +221,7 @@ int aux_write_pe(aux_config_t *aux)
 
     code = aux_write_fastq(aux->tag_output,
                            AUX_WRITE_EXT_PE2,
-                           aux->file_single,
+                           aux->file_paired,
                            aux->data->bs,
                            AUX_CODE_ERROR_WRITE_PE,
                            AUX_CODE_ERROR_READ_PE);
